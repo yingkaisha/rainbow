@@ -22,3 +22,7 @@ The offical repository of my PhD dessertation.
 # Overview
 The bias-correction, calibration, and downscaling of GEFS/NAEFS in British Columbia (BC), Canada. 
 ...
+
+# License
+
+[MIT License](https://github.com/yingkaisha/rainbow/blob/main/LICENSE)
