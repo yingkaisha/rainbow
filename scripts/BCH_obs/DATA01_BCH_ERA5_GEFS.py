@@ -112,11 +112,13 @@ for day, date in enumerate(date_list):
         
         BCH_lead[day, t, :] = BCH_obs[ind_true, :]
 
+
+BCH_lead[BCH_lead>100] = np.nan 
         
 # ========== Save ========== #
 
-tuple_save = (ERA5_obs, GEFS_obs, BCH_lead, flag_pick)
-label_save = ['ERA5_obs', 'GEFS_obs', 'BCH_obs', 'stn_flag']
+tuple_save = (ERA5_obs, GEFS_obs, BCH_lead, flag_pick, indx, indy)
+label_save = ['ERA5_obs', 'GEFS_obs', 'BCH_obs', 'stn_flag', 'indx', 'indy']
 du.save_hdf5(tuple_save, label_save, save_dir, 'BCH_ERA5_GEFS_pairs.hdf')
 
 
