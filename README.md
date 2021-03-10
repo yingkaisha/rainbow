@@ -1,6 +1,6 @@
 # Project Rainbow
 
-The offical repository of my PhD dessertation.
+The offical repository of my (in progress) PhD dessertation.
 
 # Dependencies
 
