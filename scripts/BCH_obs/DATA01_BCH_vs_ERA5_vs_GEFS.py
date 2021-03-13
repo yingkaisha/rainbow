@@ -1,3 +1,6 @@
+'''
+Creating post-processed and observed value pairs for verification.
+'''
 
 import sys
 from glob import glob
