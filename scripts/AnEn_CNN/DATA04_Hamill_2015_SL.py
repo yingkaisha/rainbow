@@ -151,8 +151,9 @@ def analog_search_SL(day0, day1, year_analog, fcst_apcp, fcst_pwat, APCP, PWAT, 
                             day_real = int(day_base[d])
                             apcp_old = APCP[year_ind][day_real, ind_real]
                             pwat_old = PWAT[year_ind][day_real, ind_real]
-                            # analog criteria of 0.7*APCP + 0.3*PWAT
-                            record_temp = 0.7*np.abs(apcp_old - apcp_new) + 0.3*np.abs(pwat_old - pwat_new)
+                            
+                            # analog criteria
+                            record_temp = 0.66*np.abs(apcp_old - apcp_new) + 0.34*np.abs(pwat_old - pwat_new)
                             
                             # if in place analog hit the new record
                             if record_temp < record_n[-1]:
