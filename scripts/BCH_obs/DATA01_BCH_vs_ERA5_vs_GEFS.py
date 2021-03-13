@@ -21,18 +21,15 @@ from namelist import *
 
 years = [2017, 2018, 2019]
 
-with h5py.File(save_dir+'BCH_ERA5_GEFS_pairs.hdf', 'r') as h5io:
+with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     ERA5_obs = h5io['ERA5_obs'][...]
-    GEFS_obs = h5io['GEFS_obs'][...]
     BCH_obs = h5io['BCH_obs'][...]
+    indx = h5io['indx'][...]
+    indy = h5io['indy'][...]
 
 N_fcst = 54
 EN = 75
 N_grids = BCH_obs.shape[-1]
-
-with h5py.File(save_dir+'BCH_ERA5_GEFS_pairs.hdf', 'r') as h5io:
-    indx = h5io['indx'][...]
-    indy = h5io['indy'][...]
 
 with h5py.File(save_dir+'NA_SL_info.hdf', 'r') as h5io:
     W_SL = h5io['W_SL'][bc_inds[0]:bc_inds[1], bc_inds[2]:bc_inds[3]][indx, indy]
