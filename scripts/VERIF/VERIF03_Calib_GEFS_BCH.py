@@ -179,7 +179,7 @@ prob = fcst_to_prob(AnEn, BCH_90th, mon_inds)
 binary = fcst_to_flag(BCH_obs, BCH_90th, mon_inds)
 
 o_bar = np.empty((N_lead_day,))
-use = np.empty((N_lead_day, N_bins-1))
+use = np.empty((N_lead_day, N_bins))
 
 prob_true = np.empty((N_lead_day, N_bins, N_boost))
 prob_pred = np.empty((N_lead_day, N_bins, N_boost))
@@ -199,10 +199,8 @@ for r in range(3):
         L = np.sum(flag_nonan)
 
         o_bar_ = np.mean(obs)
-        use_, _ = np.histogram(fcst, bins=hist_bins)
 
         o_bar[d] = o_bar_
-        use[d] = use_
         
         for n in range(N_boost):
             
@@ -216,7 +214,11 @@ for r in range(3):
             prob_true[d, :, n] = prob_true_
             prob_pred[d, :, n] = prob_pred_
             brier[d, n] = brier_
-            
+           
+        hist_bins_ = np.mean(prob_pred[d, ...], axis=1)
+        use_, _ = np.histogram(fcst, bins=np.array(list(hist_bins_)+[1.0]))
+        use[d, :] = use_
+        
     tuple_save = (brier, prob_true, prob_pred, use, o_bar)
     label_save = ['brier', 'pos_frac', 'pred_value', 'use', 'o_bar']
     du.save_hdf5(tuple_save, label_save, save_dir, 'GEFS_Calib_loc{}.hdf'.format(r))
