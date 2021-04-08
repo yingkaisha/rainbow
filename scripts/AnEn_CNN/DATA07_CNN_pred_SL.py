@@ -1,4 +1,3 @@
-
 # general tools
 import sys
 import h5py
@@ -8,7 +7,6 @@ import argparse
 import time
 from datetime import datetime, timedelta
 import numpy as np
-
 
 from tensorflow import keras
 from tensorflow.keras.layers import Input
@@ -45,7 +43,7 @@ LEAD = 54
 TYPE = 'SL'
 EN = 75
 freq = 3.0
-FCSTs = np.arange(9, 240+freq, freq) # fcst lead as hou
+FCSTs = np.arange(9, 240+freq, freq) # fcst lead as hours
 
 # =============== #
 input_tensor = Input((None, None, 3))
@@ -77,15 +75,11 @@ model.compile(loss=[keras.losses.mean_absolute_error,
               optimizer=keras.optimizers.SGD(lr=5e-6))
 
 model_path = temp_dir + 'AnEn_UNET3M_RAW_tune.hdf'
-W = tu.dummy_loader(model_path)
+W = mu.dummy_loader(model_path)
 
 model.set_weights(W)
 
 # =============== #
-# weights
-with h5py.File(save_dir+'NA_SL_info.hdf', 'r') as h5io:
-    W_SL = h5io['W_SL'][bc_inds[0]:bc_inds[1], bc_inds[2]:bc_inds[3]]
-
 # elev and land mask
 with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
     etopo_025 = h5io['etopo_bc'][...]
@@ -109,6 +103,7 @@ etopo_025 = (etopo_025-min_)/(max_-min_)
 # allocations
 N_sample = N_day
 cgan_raw = np.empty((N_sample, EN)+grid_shape)
+RAW = np.empty((N_sample, EN)+grid_shape); RAW[...] = np.nan
 CLIM_elev = np.empty((L, EN)+grid_shape+(2,))
 mon_inds = np.empty((L,), dtype=int)
 
@@ -128,22 +123,19 @@ for lead in range(LEAD):
             CLIM_elev[i, en, ..., 0] = era_3h_clim[mon_inds[i], ...]
             CLIM_elev[i, en, ..., 1] = etopo_025
 
-    with h5py.File(REFCST_dir + "{}_final_{}_lead{}.hdf".format(TYPE, year, lead), 'r') as h5io:
+    with h5py.File(REFCST_dir + "{}_final_dress_SS_{}_lead{}.hdf".format(TYPE, year, lead), 'r') as h5io:
         H15_SL = h5io['AnEn'][:N_sample, :EN, ...]
         
     # noisy AnEn preprocess
     H15_SL[H15_SL<0]=0
-    H15_SL[..., land_mask_bc] = 0
     H15_SL = np.log(H15_SL+1)
+    RAW[..., ~land_mask_bc] = H15_SL
+    RAW[..., land_mask_bc] = 0
     
-    print('CNN inference starts ...')
     for i in range(N_sample):    
-        start_time = time.time()
-        X = np.concatenate((H15_SL[i, ..., None], CLIM_elev[i, ...]), axis=-1)
+        X = np.concatenate((RAW[i, ..., None], CLIM_elev[i, ...]), axis=-1)
         temp_ = model.predict([X])
         cgan_raw[i, ...] = temp_[-1][..., 0]
-        
-    print('... completed')
     
     cgan_raw[cgan_raw<0] = 0
     cgan_raw = np.exp(cgan_raw)-1 # <--- de-normalized

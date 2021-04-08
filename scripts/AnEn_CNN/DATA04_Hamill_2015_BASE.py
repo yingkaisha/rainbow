@@ -224,34 +224,32 @@ for lead in LEADs:
     AnEn = analog_search(day0, day1, year_analog, fcst_apcp, fcst_pwat, APCP, PWAT, ERA5, IND_bc)
     print("... Completed. Time = {} sec ".format((time.time() - start_time)))
     
-    # ------------------------------------------------- #
-    print("SG filter starts ...")
-    start_time2 = time.time()
+#     # ------------------------------------------------- #
+#     print("SG filter starts ...")
+#     start_time2 = time.time()
     AnEn_grid = np.empty((L_fcst_days, EN)+bc_shape)
-    AnEn_grid[...] = 0.0
+#     AnEn_grid[...] = 0.0
 
-    AnEn_SG = np.empty((L_fcst_days, EN)+bc_shape)
-    AnEn_SG[...] = np.nan
+#     AnEn_SG = np.empty((L_fcst_days, EN)+bc_shape)
+#     AnEn_SG[...] = np.nan
 
     for i in range(L_fcst_days):
         for j in range(EN):
             AnEn_grid[i, j, ~land_mask_bc] = AnEn[i, ..., j]
-            # smoothings
-            temp_ = AnEn_grid[i, j, ...]
-            temp_barnes = ana.sg2d(temp_, window_size=9, order=3, derivative=None) # <-- copied
-            temp_barnes[~land_mask_bc] = temp_[~land_mask_bc]
-            temp_barnes = ana.sg2d(temp_barnes, window_size=9, order=3, derivative=None) # <-- copied
-            temp_barnes[land_mask_bc] = np.nan
-            AnEn_SG[i, j, ...] = temp_barnes
+#             # smoothings
+#             temp_ = AnEn_grid[i, j, ...]
+#             temp_barnes = ana.sg2d(temp_, window_size=9, order=3, derivative=None) # <-- copied
+#             temp_barnes[~land_mask_bc] = temp_[~land_mask_bc]
+#             temp_barnes = ana.sg2d(temp_barnes, window_size=9, order=3, derivative=None) # <-- copied
+#             temp_barnes[land_mask_bc] = np.nan
+#             AnEn_SG[i, j, ...] = temp_barnes
 
     AnEn_grid[..., land_mask_bc] = np.nan
-    print("... Completed. Time = {} sec ".format((time.time() - start_time2)))
+#     print("... Completed. Time = {} sec ".format((time.time() - start_time2)))  
+#     tuple_save = (AnEn_grid, AnEn_SG)
+#     label_save = ['AnEn', 'AnEn_SG']
     
-    tuple_save = (AnEn_grid, AnEn_SG)
-    label_save = ['AnEn', 'AnEn_SG']
+    tuple_save = (AnEn_grid,)
+    label_save = ['AnEn',]
     du.save_hdf5(tuple_save, label_save, REFCST_dir, 'BASE_final_{}_lead{}.hdf'.format(year_fcst, lead))
-    
-    
-    
-    
     
