@@ -1,13 +1,17 @@
 import numpy as np
 
+# ========== Parameters ========== #
+N_fcst = 54
+FCSTs = np.arange(9.0, 24*7+3, 3)
+# period = 3
+# FCSTs = np.arange(9.0, 24*9+period, period)
+# FCSTs = FCSTs[:N_fcst]
+
 # ========== General path ========== #
 # Data and backup
 DATA_dir = '/glade/scratch/ksha/DATA/'
 BACKUP_dir = '/glade/scratch/ksha/BACKUP/'
 drive_dir = '/glade/scratch/ksha/DRIVE/'
-
-# Evaluation results
-save_dir = temp_dir + 'BIAS_publish/'
 
 # ========== Data ========== #
 
@@ -43,6 +47,9 @@ domain_inds = [120, 280, 120, 340]
 # BC domain indices
 ## [lat0, lat1, lon0, lon1]
 bc_inds = [73, 121, 36, 148]
+
+# Evaluation results
+save_dir = temp_dir + 'BIAS_publish/'
 
 # ========== Graphics ========== #
 
@@ -81,6 +88,3 @@ green  = rgb_array[5, :]  # dark green
 yellow = rgb_array[8, :]  # yellow
 orange = rgb_array[-6, :] # orange
 red    = rgb_array[-3, :] # red
-
-
-
