@@ -27,11 +27,10 @@ args = vars(parser.parse_args())
 
 year = int(args['year'])
 
-N_fcst = 54
-period = 3
-
-FCSTs = np.arange(9.0, 24*9+period, period)
-FCSTs = FCSTs[:N_fcst]
+if year%4 == 0:
+    N_days = 366
+else:
+    N_days = 365
 
 # ========== BCH obs preprocessing ========== # 
 
@@ -42,12 +41,12 @@ with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     indy = h5io['indy'][...]
     
 # subsetting BCH obs into a given year
-N_days = 366 + 365*3
-date_base = datetime(2016, 1, 1)
-date_list = [date_base + timedelta(days=x) for x in np.arange(N_days, dtype=np.float)]
+N_days_bch = 366 + 365*3
+date_base_bch = datetime(2016, 1, 1)
+date_list_bch = [date_base_bch + timedelta(days=x) for x in np.arange(N_days_bch, dtype=np.float)]
 
 flag_pick = []
-for date in date_list:
+for date in date_list_bch:
     if date.year == year:
         flag_pick.append(True)
     else:
@@ -57,7 +56,7 @@ flag_pick = np.array(flag_pick)
     
 BCH_obs = BCH_obs[flag_pick, ...]
 
-# # ========== ERA5 stn climatology preprocessing ========== #
+# ========== ERA5 stn climatology preprocessing ========== #
 
 # importing domain info
 with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
@@ -75,13 +74,9 @@ CDF_obs = CDF_obs[..., indx, indy]
 # station and monthly (contains neighbouring months) wise 90th
 BCH_90th = CDF_obs[:, 93, :] 
 
-# =============== datetime processing =============== #
+N_stn = BCH_obs.shape[-1]
 
-# N days
-if year%4 == 0:
-    N_days = 366
-else:
-    N_days = 365
+# =============== datetime processing =============== #
 
 # identifying which forecasted day belongs to which month
 # thus, the corresponded monthly climo can be pulled.
@@ -98,24 +93,23 @@ for d, date in enumerate(date_list):
 
 # =============== BS calculation =============== #
 
-N_stn = BCH_obs.shape[-1]
-
 BS_clim = np.empty((N_days, N_fcst, N_stn))
 
 for lead in range(N_fcst):
     for mon in range(12):   
         flag_ = flag_pick[:, lead] == mon
-        
+        # stn obs
         obs_ = BCH_obs[flag_, lead, :]
-        thres_ = BCH_90th[mon, :] # station-wise 90-th vals
+        # station-wise 90-th thresholds
+        thres_ = BCH_90th[mon, :] 
         
         # convert obs vals to binary flags, compute BS, maskout nans
         flag_nan = np.isnan(obs_)
         BS_ = (1.0*(obs_>thres_))**2 # <---- square is needed, similar to the uncertainty component of BS
         BS_[flag_nan] = np.nan
-        
         BS_clim[flag_, lead, :] = BS_
 
+# save (all lead times, per year, climatology reference only)
 tuple_save = (BS_clim, BCH_90th)
 label_save = ['BS', 'stn_90th']
 du.save_hdf5(tuple_save, label_save, save_dir, 'CLIM_BS_BCH_{}.hdf'.format(year))

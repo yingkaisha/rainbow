@@ -15,7 +15,8 @@ sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/utils/')
 sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/')
 sys.path.insert(0, '/glade/u/home/ksha/PUBLISH/fcstpp/')
 
-from fcstpp import metrics, utils
+from fcstpp import metrics
+import analog_utils as ana
 import data_utils as du
 from namelist import * 
 
@@ -29,23 +30,27 @@ type_ind = int(args['out'])
 year = int(args['year'])
 
 if type_ind == 0:
-    perfix_raw = 'BASE_final_SS'
+    prefix_raw = 'BASE_final_SS'
+    prefix_out = 'BASE_final'
     key_raw = 'AnEn'
     EN = 25
     
 elif type_ind == 1:
-    perfix_raw = 'SL_final_SS'
+    prefix_raw = 'SL_final_SS'
+    prefix_out = 'SL_final'
     key_raw = 'AnEn'
     EN = 25
     
 elif type_ind == 2:
-    perfix_raw = 'BASE_CNN'
-    key_raw = 'AnEn'
+    prefix_raw = 'BASE_CNN'
+    prefix_out = 'BASE_CNN'
+    key_raw = 'cnn_pred'
     EN = 75 # 25 members dressed to 75
     
 elif type_ind == 3:
-    perfix_raw = 'SL_BASE'
-    key_raw = 'AnEn'
+    prefix_raw = 'SL_CNN'
+    prefix_out = 'SL_CNN'
+    key_raw = 'cnn_pred'
     EN = 75 # 25 members dressed to 75
 
 # N_days
@@ -119,11 +124,29 @@ for d, date in enumerate(date_list):
 # allocation
 BS = np.empty((N_days, N_fcst, N_stn))
 
-for lead in range(N_fcst):
-    print("computing lead: ".format(lead))
+# 2d allocations for id 0 and 1
+if type_ind == 0 or type_ind == 1:
+    with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
+        land_mask_bc = h5io['land_mask_bc'][...]
+    grid_shape = land_mask_bc.shape
     
-    with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(perfix_raw, year, lead), 'r') as h5io:
-        AnEn_stn = h5io[key_raw][:, :EN, ...][..., indx, indy]
+    AnEn_full = np.empty((365, EN)+grid_shape)
+    AnEn_full[...] = np.nan
+    
+for lead in range(N_fcst):
+    print("computing lead: {}".format(lead))
+    
+    with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(prefix_raw, year, lead), 'r') as h5io:
+        AnEn_ = h5io[key_raw][:, :EN, ...]
+    
+    if type_ind == 0 or type_ind == 1:
+        # id 0 and 1 are flattened grid points, reshape them to 2d.
+        AnEn_full[..., ~land_mask_bc] = AnEn_
+        AnEn_stn = AnEn_full[..., indx, indy]
+    else:
+        AnEn_stn = AnEn_[..., indx, indy]
+        # cnn outputs can be negative, fix it here.
+        AnEn_stn = ana.cnn_precip_fix(AnEn_stn)
 
     # extracting the 90-th threshold for initializaiton time + lead time
     for mon in range(12):
@@ -140,4 +163,4 @@ for lead in range(N_fcst):
 # save (all lead times, per year, per experiment)
 tuple_save = (BS, BCH_90th)
 label_save = ['BS', 'stn_90th']
-du.save_hdf5(tuple_save, label_save, save_dir, '{}_BS_BCH_{}.hdf'.format(perfix_smooth, year))
+du.save_hdf5(tuple_save, label_save, save_dir, '{}_BS_BCH_{}.hdf'.format(prefix_out, year))

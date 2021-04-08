@@ -108,7 +108,7 @@ for lead in range(N_fcst):
         # stn obs
         obs_ = BCH_obs[flag_, lead, :]
         # fcst
-        pred_ = GEFS[flag_, ...]
+        pred_ = GEFS_stn[flag_, ...]
         # station-wise threshold
         thres_ = BCH_90th[mon, :] # station-wise 90-th vals
         # Brier Score ( ">=" is applied)
