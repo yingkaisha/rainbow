@@ -29,12 +29,11 @@ args = vars(parser.parse_args())
 
 year = int(args['year'])
 
-N_fcst = 54
-period = 3
-
-FCSTs = np.arange(9.0, 24*9+period, period)
-FCSTs = FCSTs[:N_fcst]
-
+if year%4 == 0:
+    N_days = 366
+else:
+    N_days = 365
+    
 # ========== BCH obs preprocessing ========== # 
 
 # import station obsevations and grid point indices
@@ -44,12 +43,12 @@ with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     indy = h5io['indy'][...]
     
 # subsetting BCH obs into a given year
-N_days = 366 + 365*3
-date_base = datetime(2016, 1, 1)
-date_list = [date_base + timedelta(days=x) for x in np.arange(N_days, dtype=np.float)]
+N_days_bch = 366 + 365*3
+date_base_bch = datetime(2016, 1, 1)
+date_list_bch = [date_base_bch + timedelta(days=x) for x in np.arange(N_days_bch, dtype=np.float)]
 
 flag_pick = []
-for date in date_list:
+for date in date_list_bch:
     if date.year == year:
         flag_pick.append(True)
     else:
@@ -58,6 +57,8 @@ for date in date_list:
 flag_pick = np.array(flag_pick)
     
 BCH_obs = BCH_obs[flag_pick, ...]
+
+N_stn = BCH_obs.shape[-1]
 
 # ========== ERA5 stn climatology preprocessing ========== #
 
@@ -80,12 +81,6 @@ CDF_obs = CDF_obs[:, 4:-1, ...]
 
 # =============== datetime processing =============== #
 
-# N days
-if year%4 == 0:
-    N_days = 366
-else:
-    N_days = 365
-
 # identifying which forecasted day belongs to which month
 # thus, the corresponded monthly climo can be pulled.
 
@@ -101,8 +96,7 @@ for d, date in enumerate(date_list):
 
 # =============== CRPS calculation =============== #
 
-N_stn = BCH_obs.shape[-1]
-
+# allocation
 CRPS_clim = np.empty((N_days, N_fcst, N_stn))
 
 for lead in range(N_fcst):
@@ -113,7 +107,7 @@ for lead in range(N_fcst):
     
         CRPS_clim[flag_, lead, :] = crps_
         
-# Save    
+# save (all lead times, per year, climatology reference only) 
 tuple_save = (CRPS_clim,)
 label_save = ['CRPS']
 du.save_hdf5(tuple_save, label_save, save_dir, 'CLIM_CRPS_BCH_{}.hdf'.format(year))
