@@ -23,7 +23,7 @@ def flag_out(dataframe, col, flag_col, flag_val):
 
 def BCH_txt_preprocess(filename_input, filename_output, cols_num, qc_code, verbose=True):
     '''
-    Converting BC Hydro (old) txt observation files into pandas HDF5
+    Converting BC Hydro (old) txt observation files into pandas HDF5.
     
     Input
     ----------
@@ -204,7 +204,7 @@ def BCH_PREC_resample(bucket_height, sec_obs, date_start, date_end, period=60*60
     '''
     Coverting BC Hydro NRT bucket heights into precipitation rate [mm/period].
     
-    Note: this function works similar to BC Hydro resample scheme, 
+    Note: this function works similarly to the BC Hydro resample scheme, 
           but filters out more values [produces more NaNs, see (1), (2), and (3)].
     
     Input
@@ -234,8 +234,8 @@ def BCH_PREC_resample(bucket_height, sec_obs, date_start, date_end, period=60*60
     L_time = len(sec_base)
     L_obs = len(bucket_height)
 
-    # Bad instrument flag: 
-    # If bucket height is neg, then mark it as bad
+    # (1) Bad instrument flag: 
+    #     If bucket height is negative, mark it as bad
     bucket_height[bucket_height<0] = np.nan
 
 
@@ -250,16 +250,16 @@ def BCH_PREC_resample(bucket_height, sec_obs, date_start, date_end, period=60*60
 
     for i in range(1, L_obs):
 
-        # No response flag:
-        # If two bucket heights have their time gap > resample_preiod, mark the half-gap as bad 
+        # (2) No response flag:
+        #     If two bucket heights have their time gap > resample_preiod, mark the half-gap as bad 
         if sec_obs[i] - sec_obs[i-1] > 2*period:
             # insert a np.nan
             dt = sec_obs[i] - sec_obs[i-1]
             bucket_height_fix.append(np.nan)
             sec_obs_fix.append(sec_obs[i] - 0.5*dt)
 
-        # Evaporation flag: 
-        # If negative bucket height diff appeared two times, mark the later as bad
+        # (3) Evaporation flag: 
+        #     If negative bucket height diff appeared two times, mark the later as bad
         if bucket_height[i] < bucket_height[i-1]:
             neg_count += 1
             delta += bucket_height[i-1] - bucket_height[i]
