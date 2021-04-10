@@ -17,6 +17,7 @@ sys.path.insert(0, '/glade/u/home/ksha/PUBLISH/fcstpp/')
 
 from sklearn.metrics import brier_score_loss
 from fcstpp import metrics, utils
+import analog_utils as ana
 import data_utils as du
 from namelist import * 
 
@@ -63,39 +64,42 @@ args = vars(parser.parse_args())
 type_ind = int(args['out'])
 
 if type_ind == 0:
-    perfix_smooth = 'BASE_final'
-    perfix_raw = 'BASE_final'
-    key_smooth = 'AnEn_SG'
+    prefix_raw = 'BASE_final_SS'
+    prefix_out = 'BASE_final'
     key_raw = 'AnEn'
+    EN = 25
     
 elif type_ind == 1:
-    perfix_smooth = 'SL_final'
-    perfix_raw = 'SL_final'
-    key_smooth = 'AnEn_SG'
+    prefix_raw = 'SL_final_SS'
+    prefix_out = 'SL_final'
     key_raw = 'AnEn'
+    EN = 25
     
 elif type_ind == 2:
-    perfix_smooth = 'BASE_CNN'
-    perfix_raw = 'BASE_final'
-    key_smooth = 'cnn_pred'
-    key_raw = 'AnEn'
+    prefix_raw = 'BASE_CNN'
+    prefix_out = 'BASE_CNN'
+    key_raw = 'cnn_pred'
+    EN = 75 # 25 members dressed to 75
     
 elif type_ind == 3:
-    perfix_smooth = 'SL_CNN'
-    perfix_raw = 'SL_final'
-    key_smooth = 'cnn_pred'
-    key_raw = 'AnEn'
+    prefix_raw = 'SL_CNN'
+    prefix_out = 'SL_CNN'
+    key_raw = 'cnn_pred'
+    EN = 75 # 25 members dressed to 75
 
-print("perfix_smooth = {}; perfix_raw = {}".format(perfix_smooth, perfix_raw))
+# ========== Gridded input ========== #
 
-N_fcst = 54
-period = 3
+# three watershed groups
+with h5py.File(save_dir+'BCH_wshed_groups.hdf', 'r') as h5io:
+    flag_sw = h5io['flag_sw'][...]
+    flag_si = h5io['flag_si'][...]
+    flag_n = h5io['flag_n'][...]
+FLAGs = (flag_sw, flag_si, flag_n)
 
-FCSTs = np.arange(9.0, 24*9+period, period)
-FCSTs = FCSTs[:N_fcst]
-
-EN = 75
-
+with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
+    land_mask_bc = h5io['land_mask_bc'][...]
+grid_shape = land_mask_bc.shape
+    
 # ========== BCH obs preprocessing ========== # 
 
 # import station obsevations and grid point indices
@@ -105,26 +109,25 @@ with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     indy = h5io['indy'][...]
     
 # subsetting BCH obs into a given year
-N_days = 366 + 365*3
-date_base = datetime(2016, 1, 1)
-date_list = [date_base + timedelta(days=x) for x in np.arange(N_days, dtype=np.float)]
+N_days_bch = 366 + 365*3
+date_base_bch = datetime(2016, 1, 1)
+date_list_bch = [date_base_bch + timedelta(days=x) for x in np.arange(N_days_bch, dtype=np.float)]
 
 flag_pick = []
-for date in date_list:
+for date in date_list_bch:
     if date.year in [2017, 2018, 2019]:
         flag_pick.append(True)
     else:
         flag_pick.append(False)
 
 flag_pick = np.array(flag_pick)
-    
+
 BCH_obs = BCH_obs[flag_pick, ...]
 
-# ========== ERA5 stn climatology preprocessing ========== #
+# number of stations
+N_stn = BCH_obs.shape[-1]
 
-# importing domain info
-with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
-    land_mask_bc = h5io['land_mask_bc'][...]
+# ========== ERA5 stn climatology preprocessing ========== #
 
 # importing girdded ERA5 quantiles
 with h5py.File(ERA_dir+'PT_3hour_quantile.hdf', 'r') as h5io:
@@ -136,20 +139,17 @@ CDF_obs[..., ~land_mask_bc] = CDF_era
 CDF_obs = CDF_obs[..., indx, indy]
 
 # station and monthly (contains neighbouring months) wise 90th
-BCH_90th = CDF_obs[:, 93, :] # <--- 90-th is selected as thres
+BCH_90th = CDF_obs[:, 93, :] 
 
-# ========== PP preprocessing ========== #
-# re calc datelist for 2017-2019
+# ========== Merging multi-year post-processed files ========== #
+
+# datelist for 2017-2019
 N_days = 365 + 365 + 365
 date_base = datetime(2017, 1, 1)
 date_list = [date_base + timedelta(days=x) for x in np.arange(N_days, dtype=np.float)]
 
-N_stn = BCH_obs.shape[-1]
-
-with h5py.File(save_dir+'NA_SL_info.hdf', 'r') as h5io:
-    W_SL = h5io['W_SL'][bc_inds[0]:bc_inds[1], bc_inds[2]:bc_inds[3]][indx, indy]
-
-AnEn = np.empty((N_days, N_fcst, EN, N_stn))
+# allocation
+AnEn_stn = np.empty((N_days, N_fcst, EN, N_stn))
 
 for y in [2017, 2018, 2019]:
     if y%4 == 0:
@@ -157,32 +157,39 @@ for y in [2017, 2018, 2019]:
     else:
         n_days = 365
         
+    if type_ind == 0 or type_ind == 1:
+        AnEn_full = np.empty((n_days, EN)+grid_shape)
+        AnEn_full[...] = np.nan
+    
+    # ---------- #
     flag_pick = []
     for date in date_list:
         if date.year == y:
             flag_pick.append(True)
         else:
             flag_pick.append(False)
-    
     flag_pick = np.array(flag_pick)
+    # ---------- #
     
     for lead in range(N_fcst):
-        #print("lead = {}".format(lead))
-
-        with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(perfix_raw, y, lead), 'r') as h5io:
-            RAW = h5io[key_raw][:, :EN, ...][..., indx, indy]
-
-        with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(perfix_smooth, y, lead), 'r') as h5io:
-            SMOOTH = h5io[key_smooth][:, :EN, ...][..., indx, indy]
-
-        AnEn_ = W_SL*RAW + (1-W_SL)*SMOOTH
-        AnEn[flag_pick, lead, ...] = AnEn_
+        
+        with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(prefix_raw, y, lead), 'r') as h5io:
+            AnEn_ = h5io[key_raw][:, :EN, ...]
+        
+        if type_ind == 0 or type_ind == 1:
+            # id 0 and 1 are flattened grid points, reshape them to 2d.
+            AnEn_full[..., ~land_mask_bc] = AnEn_
+            AnEn_stn[flag_pick, lead, ...] = AnEn_full[..., indx, indy]
+        else:
+            # cnn outputs can be negative, fix it here.
+            AnEn_stn[flag_pick, lead, ...] = ana.cnn_precip_fix(AnEn_[..., indx, indy])
 
 # ========== Calibration ========== #
 # params
 N_bins = 15
-hist_bins = np.linspace(0, 1, N_bins)
 N_boost = 100
+hist_bins = np.linspace(0, 1, N_bins)
+N_lead_day = 7 # number of forecasted days
 
 # 3-hr lead times to days
 fcst_leads_ini = np.arange(0, 72*3+3, 3, dtype=np.float)
@@ -194,25 +201,13 @@ for lead in fcst_leads_ini:
     DAYS.append(date_temp.day-1)
 DAYS = np.array(DAYS[2:56])
 
-# number of forecasted days
-N_lead_day = 7
-
-# three watershed groups
-with h5py.File(save_dir+'BCH_wshed_groups.hdf', 'r') as h5io:
-    flag_sw = h5io['flag_sw'][...]
-    flag_si = h5io['flag_si'][...]
-    flag_n = h5io['flag_n'][...]
-    
-FLAGs = (flag_sw, flag_si, flag_n)
-
 # converting post-processed GEFS to flags and then probabilities
-
 mon_inds = []
 for d, date in enumerate(date_list):
     mon_inds.append(date.month-1)        
 mon_inds = np.array(mon_inds)
 
-prob = fcst_to_prob(AnEn, BCH_90th, mon_inds)
+prob = fcst_to_prob(AnEn_stn, BCH_90th, mon_inds)
 binary = fcst_to_flag(BCH_obs, BCH_90th, mon_inds)
 
 o_bar = np.empty((N_lead_day,))
@@ -258,5 +253,5 @@ for r in range(3):
             
     tuple_save = (brier, prob_true, prob_pred, use, o_bar)
     label_save = ['brier', 'pos_frac', 'pred_value', 'use', 'o_bar']
-    du.save_hdf5(tuple_save, label_save, save_dir, '{}_Calib_loc{}.hdf'.format(perfix_smooth, r))
+    du.save_hdf5(tuple_save, label_save, save_dir, '{}_Calib_loc{}.hdf'.format(prefix_out, r))
 

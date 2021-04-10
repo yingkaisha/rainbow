@@ -55,12 +55,6 @@ def fcst_to_flag(data, thres, mon_inds):
             out[i, j, flag_nan] = np.nan
     return out
 
-N_fcst = 54
-period = 3
-
-FCSTs = np.arange(9.0, 24*9+period, period)
-FCSTs = FCSTs[:N_fcst]
-
 EN = 45
 
 # ========== BCH obs preprocessing ========== # 
