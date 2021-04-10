@@ -83,6 +83,9 @@ flag_pick = np.array(flag_pick)
 
 BCH_obs = BCH_obs[flag_pick, ...]
 
+# number of stations
+N_stn = BCH_obs.shape[-1]
+
 # ========== ERA5 stn climatology preprocessing ========== #
 
 # importing domain info
@@ -100,9 +103,6 @@ CDF_obs = CDF_obs[..., indx, indy]
 
 # station and monthly (contains neighbouring months) wise 90th
 BCH_90th = CDF_obs[:, 93, :] 
-
-# number of stations
-N_stn = BCH_obs.shape[-1]
 
 # ========== BS computation ========== #
 
