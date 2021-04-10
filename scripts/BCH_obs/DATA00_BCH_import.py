@@ -23,7 +23,7 @@ from namelist import *
 
 filenames = sorted(glob(BACKUP_dir+'BCH_2016_2020/*.txt'))
 
-keys, keys_stored = bu.BCH_txt_preprocess(filename, BACKUP_dir+'BCH_PREC_QC_NRT_2016_2020.hdf', 
+keys, keys_stored = bu.BCH_txt_preprocess(filenames, BACKUP_dir+'BCH_PREC_QC_NRT_2016_2020.hdf', 
                                           ['PREC_INST_QC',], qc_code=['50',], verbose=False)
 
 date_start = datetime(2016, 1, 1, 0, 0, 0)
