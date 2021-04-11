@@ -157,8 +157,13 @@ for lead in range(N_fcst):
         pred_ = AnEn_stn[flag_, ...]
         # station-wise threshold
         thres_ = BCH_90th[mon, :]
+        
         # Brier Score ( ">=" is applied)
-        BS[flag_, lead, :] = metrics.BS_binary_1d_nan((obs_>=thres_), (pred_>=thres_))
+        obs_flag = obs_>=thres_
+        obs_flag[np.isnan(obs_)] = np.nan
+        pred_flag = pred_>=thres_
+        
+        BS[flag_, lead, :] = metrics.BS_binary_1d_nan(obs_flag, pred_flag)
 
 # save (all lead times, per year, per experiment)
 tuple_save = (BS, BCH_90th)
