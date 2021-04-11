@@ -289,3 +289,24 @@ def BCH_PREC_resample(bucket_height, sec_obs, date_start, date_end, period=60*60
     date_ref = [date_start + timedelta(seconds=x) for x in range(0, sec_ref_max-sec_ref_min, period)]
     
     return precip, date_ref
+
+def clean_no_response(data, tol_window=None):
+    '''
+    Masking theose "no response zeros" as NaN
+        tol_window: sliding window based checking of zeros/NaNs.
+    '''
+    # begining and ending zeros
+    indices = np.nonzero(data)
+    ind0 = np.min(indices)
+    ind1 = np.max(indices)
+    
+    data[:ind0] = np.nan
+    data[ind1:] = np.nan
+    
+    # sliding window based no response checking
+    if tol_window is not None:
+        L = len(data) - tol_window + 1
+        for i in range(L):
+            if np.nansum(data[i:i+tol_window]) == 0:
+                data[i:i+tol_window] = np.nan
+    return data
