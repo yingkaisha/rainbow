@@ -19,9 +19,12 @@ sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/')
 sys.path.insert(0, '/glade/u/home/ksha/PUBLISH/fcstpp/')
 
 from fcstpp import metrics
+import analog_utils as ana
 import data_utils as du
 from namelist import * 
 
+import warnings
+warnings.filterwarnings("ignore")
 
 # ---------- Parsers ---------- #
 parser = argparse.ArgumentParser()
@@ -33,30 +36,34 @@ type_ind = int(args['out'])
 year = int(args['year'])
 
 if type_ind == 0:
-    perfix_smooth = 'BASE_final'
-    perfix_raw = 'BASE_final'
-    key_smooth = 'AnEn_SG'
+    prefix_raw = 'BASE_final_SS'
+    prefix_out = 'BASE_final'
     key_raw = 'AnEn'
+    EN = 25
     
 elif type_ind == 1:
-    perfix_smooth = 'SL_final'
-    perfix_raw = 'SL_final'
-    key_smooth = 'AnEn_SG'
+    prefix_raw = 'SL_final_SS'
+    prefix_out = 'SL_final'
     key_raw = 'AnEn'
+    EN = 25
     
 elif type_ind == 2:
-    perfix_smooth = 'BASE_CNN'
-    perfix_raw = 'BASE_final'
-    key_smooth = 'cnn_pred'
-    key_raw = 'AnEn'
+    prefix_raw = 'BASE_CNN'
+    prefix_out = 'BASE_CNN'
+    key_raw = 'cnn_pred'
+    EN = 75 # 25 members dressed to 75
     
 elif type_ind == 3:
-    perfix_smooth = 'SL_CNN'
-    perfix_raw = 'SL_final'
-    key_smooth = 'cnn_pred'
-    key_raw = 'AnEn'
+    prefix_raw = 'SL_CNN'
+    prefix_out = 'SL_CNN'
+    key_raw = 'cnn_pred'
+    EN = 75 # 25 members dressed to 75
 
-print("perfix_smooth = {}; perfix_raw = {}".format(perfix_smooth, perfix_raw))
+# N_days
+if year%4 == 0:
+    N_days = 366
+else:
+    N_days = 365
 
 # ========== BCH obs preprocessing ========== # 
 
@@ -67,12 +74,12 @@ with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     indy = h5io['indy'][...]
     
 # subsetting BCH obs into a given year
-N_days = 366 + 365*3
-date_base = datetime(2016, 1, 1)
-date_list = [date_base + timedelta(days=x) for x in np.arange(N_days, dtype=np.float)]
+N_days_bch = 366 + 365*3
+date_base_bch = datetime(2016, 1, 1)
+date_list_bch = [date_base_bch + timedelta(days=x) for x in np.arange(N_days_bch, dtype=np.float)]
 
 flag_pick = []
-for date in date_list:
+for date in date_list_bch:
     if date.year == year:
         flag_pick.append(True)
     else:
@@ -82,46 +89,45 @@ flag_pick = np.array(flag_pick)
     
 BCH_obs = BCH_obs[flag_pick, ...]
 
-# =============== Allocation and MAE computation =============== #
-
-# N_days
-if year%4 == 0:
-    N_days = 366
-else:
-    N_days = 365
-    
-# other param
-N_fcst = 54; EN = 75
 N_grids = BCH_obs.shape[-1]
 
-# ---------- grided info ---------- #
-with h5py.File(save_dir+'NA_SL_info.hdf', 'r') as h5io:
-    W_SL = h5io['W_SL'][bc_inds[0]:bc_inds[1], bc_inds[2]:bc_inds[3]][indx, indy]
+# =============== Allocation and MAE computation =============== #
 
-# ---------- allocations ---------- #
-MAE = np.empty((N_days, N_fcst, N_grids))
-SPREAD = np.empty((N_days, N_fcst, N_grids))
+# allocation
+## indivual member-based MAE (not the MAE of ensemble mean)
+MAE = np.empty((N_days, N_fcst, N_grids)) 
 CRPS = np.empty((N_days, N_fcst, N_grids))
 
-print("Computing CRPS ...")
+# 2d allocations for id 0 and 1
+if type_ind == 0 or type_ind == 1:
+    with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
+        land_mask_bc = h5io['land_mask_bc'][...]
+    grid_shape = land_mask_bc.shape
+    
+    AnEn_full = np.empty((365, EN)+grid_shape)
+    AnEn_full[...] = np.nan
 
 for lead in range(N_fcst):
-    print("lead = {}".format(lead))
+    print("computing lead: {}".format(lead))
     
-    with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(perfix_raw, year, lead), 'r') as h5io:
-        RAW = h5io[key_raw][:, :EN, ...][..., indx, indy]
-            
-    with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(perfix_smooth, year, lead), 'r') as h5io:
-        SMOOTH = h5io[key_smooth][:, :EN, ...][..., indx, indy]
+    with h5py.File(REFCST_dir + "{}_{}_lead{}.hdf".format(prefix_raw, year, lead), 'r') as h5io:
+        AnEn_ = h5io[key_raw][:, :EN, ...]
     
-    AnEn = W_SL*RAW + (1-W_SL)*SMOOTH
-    
-    crps, mae, _ = metrics.CRPS_1d_nan(BCH_obs[:, lead, :], AnEn)
+    if type_ind == 0 or type_ind == 1:
+        # id 0 and 1 are flattened grid points, reshape them to 2d.
+        AnEn_full[..., ~land_mask_bc] = AnEn_
+        AnEn_stn = AnEn_full[..., indx, indy]
+    else:
+        AnEn_stn = AnEn_[..., indx, indy]
+        # cnn outputs can be negative, fix it here.
+        AnEn_stn = ana.cnn_precip_fix(AnEn_stn)
+        
+    crps, mae, _ = metrics.CRPS_1d_nan(BCH_obs[:, lead, :], AnEn_stn)
     MAE[:, lead, ...] = mae
     CRPS[:, lead, ...] = crps
 
+# save (all lead times, per year, per experiment)
 tuple_save = (MAE, CRPS,)
 label_save = ['MAE', 'CRPS',]
-du.save_hdf5(tuple_save, label_save, save_dir, '{}_CRPS_BCH_{}.hdf'.format(perfix_smooth, year))
-
+du.save_hdf5(tuple_save, label_save, save_dir, '{}_CRPS_BCH_{}.hdf'.format(prefix_out, year))
 

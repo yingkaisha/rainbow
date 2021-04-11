@@ -12,6 +12,9 @@ import h5py
 import numba as nb
 import numpy as np
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # custom tools
 sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/utils/')
 sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/utils/')
