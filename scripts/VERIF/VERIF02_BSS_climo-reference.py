@@ -10,6 +10,9 @@ import pandas as pd
 import numba as nb
 import numpy as np
 
+import warnings
+warnings.filterwarnings("ignore")
+
 # custom tools
 sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/utils/')
 sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/utils/')
@@ -102,11 +105,13 @@ for lead in range(N_fcst):
         obs_ = BCH_obs[flag_, lead, :]
         # station-wise 90-th thresholds
         thres_ = BCH_90th[mon, :] 
+        obs_flag = obs_>=thres_
+        obs_flag[np.isnan(obs_)] = np.nan
         
         # convert obs vals to binary flags, compute BS, maskout nans
         flag_nan = np.isnan(obs_)
-        BS_ = (1.0*(obs_>thres_))**2 # <---- square is needed, similar to the uncertainty component of BS
-        BS_[flag_nan] = np.nan
+        BS_ = (1.0*obs_flag-0.1)**2
+        
         BS_clim[flag_, lead, :] = BS_
 
 # save (all lead times, per year, climatology reference only)
