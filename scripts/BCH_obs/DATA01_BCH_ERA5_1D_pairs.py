@@ -89,7 +89,7 @@ for key in stn_code:
 BCH_obs = np.concatenate(OBS, axis=-1)
 
 # ! <--- data cleaning 
-BCH_obs[BCH_obs>100] = np.nan
+BCH_obs[BCH_obs>300] = np.nan
 
 tuple_save = (ERA5_obs, BCH_obs, flag_pick)
 label_save = ['ERA5_obs', 'BCH_obs', 'stn_flag']
