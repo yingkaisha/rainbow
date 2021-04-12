@@ -133,11 +133,11 @@ N_stn = BCH_obs.shape[-1]
 # ========== ERA5 stn climatology preprocessing ========== #
 
 # importing girdded ERA5 quantiles
-with h5py.File(ERA_dir+'PT_3hour_quantile.hdf', 'r') as h5io:
-    CDF_era = h5io['CDF'][...]
-    q_bins = h5io['q'][...]
+with h5py.File(ERA_dir+'PT_3hour_q.hdf', 'r') as h5io:
+    CDF_era = h5io['era_3hq_bc'][...]
+    q_bins = h5io['q_bins'][...]
 
-CDF_obs = np.empty((12, 105,)+land_mask_bc.shape)
+CDF_obs = np.empty((12, 107,)+land_mask_bc.shape)
 CDF_obs[..., ~land_mask_bc] = CDF_era
 CDF_obs = CDF_obs[..., indx, indy]
 
