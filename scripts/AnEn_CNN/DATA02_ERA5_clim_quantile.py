@@ -16,7 +16,7 @@ sys.path.insert(0, '/glade/u/home/ksha/WORKSPACE/Analog_BC/utils/')
 import data_utils as du
 from namelist import * 
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def q_3h(era_3h, mon_inds):
     q_out = np.empty((12, 107, 160, 220))
     for mon in range(12):
@@ -26,17 +26,27 @@ def q_3h(era_3h, mon_inds):
                 q_out[mon, :, i, j] = np.quantile(era_3h[flag_pick, i, j], q_bins)
     return q_out
 
+def moving_accum(data, window):
+    N_days, Nx, Ny = data.shape
+    N_out = N_days - window + 1
+    out = np.empty((N_out, Nx, Ny))
+    
+    for i in range(N_out):
+        temp_ = data[i:i+window, ...]
+        out[i, ...] = np.nansum(temp_, axis=0)
+    return out
+
 with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
     base_lon = h5io['base_lon'][...]
     base_lat = h5io['base_lat'][...]
-    lon_025 = h5io['lon_025'][...]
-    lat_025 = h5io['lat_025'][...]
-    CLIM = h5io['CLIM'][...]
-    etopo_base = h5io['etopo_base'][...]
-    etopo_bc = h5io['etopo_bc'][...]
+    lon_025 = h5io['bc_lon'][...]
+    lat_025 = h5io['bc_lat'][...]
     land_mask_base = h5io['land_mask_base'][...]
     land_mask_bc = h5io['land_mask_bc'][...]
-
+    
+bc_in_base = np.ones(land_mask.shape).astype(bool)
+bc_in_base[bc_inds[0]:bc_inds[1], bc_inds[2]:bc_inds[3]] = land_mask_bc
+    
 base = datetime(2000, 1, 1)
 date_list = [base + timedelta(hours=x) for x in range(0, 6940*24, 3)]
 
@@ -60,9 +70,15 @@ with h5py.File(ERA_dir+'PT_3hour_combine.hdf', 'r') as h5io:
     era_3h = h5io['era_3h'][...]
     
 q_out = q_3h(era_3h, mon_inds)
-    
-tuple_save = (q_out, q_bins)
-label_save = ['era_3hq', 'q_bins']
+
+era_3h_7day = moving_accum(era_3h, N_fcst)
+L = len(era_3h_7day)
+
+q_out_accum = q_3h(era_3h_7day, mon_inds[:, :L])
+
+q_out_bc = q_out[..., ~bc_in_base]
+q_out_accum_bc = q_out_accum[..., ~bc_in_base]
+
+tuple_save = (q_out, q_out_bc, q_out_accum, q_out_accum_bc, q_bins)
+label_save = ['era_3hq_base', 'era_3hq_bc', 'era_3hq_accum_base', 'era_3hq_accum_bc', 'q_bins']
 du.save_hdf5(tuple_save, label_save, ERA_dir, 'PT_3hour_q.hdf')
-
-
