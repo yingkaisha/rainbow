@@ -107,11 +107,8 @@ for lead in range(N_fcst):
         thres_ = BCH_90th[mon, :] 
         obs_flag = obs_>=thres_
         obs_flag[np.isnan(obs_)] = np.nan
-        
-        # convert obs vals to binary flags, compute BS, maskout nans
-        flag_nan = np.isnan(obs_)
+        # BS calculation
         BS_ = (1.0*obs_flag-0.1)**2
-        
         BS_clim[flag_, lead, :] = BS_
 
 # save (all lead times, per year, climatology reference only)

@@ -105,7 +105,7 @@ CDF_obs[..., ~land_mask_bc] = CDF_era
 CDF_obs = CDF_obs[..., indx, indy]
 
 # station and monthly (contains neighbouring months) wise 90th
-BCH_90th = CDF_obs[:, 93, :] 
+BCH_90th = CDF_obs[:, 93, :]
 
 # ========== BS computation ========== #
 
