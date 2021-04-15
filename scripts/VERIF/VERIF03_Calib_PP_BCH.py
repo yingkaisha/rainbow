@@ -196,7 +196,7 @@ N_lead_day = 7 # number of forecasted days
 
 # 3-hr lead times to days
 fcst_leads_ini = np.arange(0, 72*3+3, 3, dtype=np.float)
-date_base = datetime(2017, 1, 1, 0) # 2017 as a reference
+# date_base = datetime(2017, 1, 1, 0) # 2017 as a reference
 
 DAYS = []
 for lead in fcst_leads_ini:
