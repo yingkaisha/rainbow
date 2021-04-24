@@ -1,4 +1,5 @@
 import sys
+import argparse
 from glob import glob
 from datetime import datetime, timedelta
 
@@ -27,6 +28,13 @@ def reliability_diagram(cate_true, prob_model, bins):
     prob_true[~flag] = np.nan
     return prob_true, prob_pred
 
+# Defining params
+parser = argparse.ArgumentParser()
+parser.add_argument('lead', help='lead')
+args = vars(parser.parse_args())
+
+lead_ = int(args['lead'])
+
 # three watershed groups
 with h5py.File(save_dir+'BCH_wshed_groups.hdf', 'r') as h5io:
     flag_sw = h5io['flag_sw'][...]
@@ -38,27 +46,23 @@ with h5py.File(save_dir+'BCH_ERA5_3H_verif.hdf', 'r') as h5io:
     indx = h5io['indx'][...]
     indy = h5io['indy'][...]
     
-with h5py.File(save_dir+'BCH_MODEL_accum.hdf', 'r') as h5io:
-    BASE_accum = h5io['BASE_accum'][...]
-    BCNN_accum = h5io['BCNN_accum'][...]
-    SL_accum = h5io['SL_accum'][...]
-    SCNN_accum = h5io['SCNN_accum'][...]
-    BCH_obs_accum = h5io['BCH_obs_accum'][...]
+with h5py.File(save_dir+'BCH_MODEL_cumsum.hdf', 'r') as h5io:
+    BASE_accum = h5io['BASE_cumsum'][:, lead_, ...]
+    BCNN_accum = h5io['BCNN_cumsum'][:, lead_, ...]
+    SL_accum = h5io['SL_cumsum'][:, lead_, ...]
+    SCNN_accum = h5io['SCNN_cumsum'][:, lead_, ...]
+    BCH_obs_accum = h5io['BCH_obs_cumsum'][:, lead_, ...]
     
 # importing domain info
 with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
     land_mask_bc = h5io['land_mask_bc'][...]
 
 # importing girdded ERA5 quantiles
-with h5py.File(ERA_dir+'PT_3hour_q.hdf', 'r') as h5io:
-    CDF_era = h5io['era_3hq_accum_bc'][...]
+with h5py.File(ERA_dir+'PT_accum_q_stn.hdf', 'r') as h5io:
+    CDF_obs = h5io['era_accum_q'][...]
     q_bins = h5io['q_bins'][...]
 
-CDF_obs = np.empty((12, 107,)+land_mask_bc.shape)
-CDF_obs[..., ~land_mask_bc] = CDF_era
-CDF_obs = CDF_obs[..., indx, indy]
-
-BCH_90th = CDF_obs[:, 93, :] 
+BCH_90th = CDF_obs[:, 89, lead_, :]
 
 N_days = 365 + 365 + 365
 date_base = datetime(2017, 1, 1)
@@ -86,8 +90,6 @@ brier_bcnn = np.empty((N_boost,))
 brier_sl = np.empty((N_boost,))
 brier_scnn = np.empty((N_boost,))
 
-thres_ = [450, 250, 150]
-
 # loop over three watersheds
 for r in range(3):
     flag_ = FLAGs[r]
@@ -96,10 +98,7 @@ for r in range(3):
     SL_accum_ = np.copy(SL_accum[..., flag_])
     BCNN_accum_ = np.copy(BCNN_accum[..., flag_])
     SCNN_accum_ = np.copy(SCNN_accum[..., flag_])
-    
-    BCNN_accum_[BCNN_accum_>=thres_[r]] = thres_[r]
-    SCNN_accum_[SCNN_accum_>=thres_[r]] = thres_[r]
-    
+
     BCH_thres_mon = BCH_90th[:, flag_]
     BCH_thres = np.empty((N_days, np.sum(flag_)))
     
@@ -179,5 +178,5 @@ for r in range(3):
                   'brier_base', 'brier_bcnn', 'brier_sl', 'brier_scnn',
                   'use_base', 'use_bcnn', 'use_sl', 'use_scnn', 'o_bar']
     
-    du.save_hdf5(tuple_save, label_save, save_dir, 'Accum_Calib_loc{}.hdf'.format(r))
+    du.save_hdf5(tuple_save, label_save, save_dir, 'Accum_Calib_lead{}_loc{}.hdf'.format(lead_, r))
     
