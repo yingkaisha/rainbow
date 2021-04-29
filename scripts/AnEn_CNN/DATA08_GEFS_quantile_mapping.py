@@ -23,21 +23,21 @@ from namelist import *
 lead0 = 0
 lead1 = 54
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def simple_max(a, b):
     if a >= b:
         return a
     else:
         return b
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def simple_min(a, b):
     if a <= b:
         return a
     else:
         return b
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def quantile_mapping_stencil(pred, cdf_pred, cdf_true, land_mask, rad=1):
     '''
     pred = (en, grids)
@@ -67,17 +67,51 @@ def quantile_mapping_stencil(pred, cdf_pred, cdf_true, land_mask, rad=1):
                     for iy in range(min_y, max_y+1):
                         if land_mask[ix, iy]:
                             for en in range(EN):
-                                out[en, count, i, j] = np.interp(pred[en, i, j], cdf_pred[:, ix, iy], cdf_true[:, i, j])                        
-#                                 if pred[en, i, j] <= cdf_pred[93, ix, iy]:
-#                                     out[en, count, i, j] = np.interp(pred[en, i, j], cdf_pred[:, ix, iy], cdf_true[:, i, j])                                
-#                                 else:
-#                                     slope = np.sum((cdf_true[93:, i, j] - cdf_true[93, i, j])*\
-#                                                    (cdf_pred[93:, ix, iy] - cdf_pred[93, ix, iy]))/\
-#                                                    np.sum((cdf_pred[93:, ix, iy] - cdf_pred[93, ix, iy])**2)
-#                                     out[en, count, i, j] = cdf_true[93, i, j] + slope*(pred[en, i, j] - cdf_pred[93, ix, iy])
+                                #out[en, count, i, j] = np.interp(pred[en, ix, iy], cdf_pred[:, ix, iy], cdf_true[:, i, j])                        
+                                if pred[en, ix, iy] <= cdf_pred[93, ix, iy]:
+                                    out[en, count, i, j] = np.interp(pred[en, ix, iy], cdf_pred[:, ix, iy], cdf_true[:, i, j])                                
+                                else:
+                                    slope = np.sum((cdf_true[93:, i, j] - cdf_true[93, i, j])*(cdf_pred[93:, ix, iy] - cdf_pred[93, ix, iy]))/\
+                                                   np.sum((cdf_pred[93:, ix, iy] - cdf_pred[93, ix, iy])**2)
+                                    out[en, count, i, j] = cdf_true[93, i, j] + slope*(pred[en, ix, iy] - cdf_pred[93, ix, iy])
                                     
                             count += 1
     return out
+
+@nb.njit()
+def enlarge_stencil(pred, land_mask, rad=1):
+    '''
+    pred = (en, grids)
+    cdf = (quantile, grids)
+    '''
+    EN, Nx, Ny = pred.shape
+    N_fold = (2*rad+1)**2
+    out = np.empty((EN, N_fold, Nx, Ny,))
+    out[...] = np.nan
+    
+    slope = 0
+    for i in range(Nx):
+        for j in range(Ny):
+            if land_mask[i, j]:
+                
+                # handling edging grid points
+                min_x = simple_max(i-rad, 0)
+                max_x = simple_min(i+rad, Nx-1)
+                min_y = simple_max(j-rad, 0)
+                max_y = simple_min(j+rad, Ny-1)
+                
+                # counting stencil grids
+                count = 0
+                
+                # center grid = (i, j); stencil grids = (ix, iy)
+                for ix in range(min_x, max_x+1):
+                    for iy in range(min_y, max_y+1):
+                        if land_mask[ix, iy]:
+                            for en in range(EN):
+                                out[en, count, i, j] = np.interp(pred[en, ix, iy], cdf_pred[:, ix, iy], cdf_true[:, i, j])                        
+                            count += 1
+    return out  
+    
 
 with h5py.File(save_dir+'BC_domain_info.hdf', 'r') as h5io:
     land_mask_bc = h5io['land_mask_bc'][...]
