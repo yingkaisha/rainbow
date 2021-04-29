@@ -116,9 +116,9 @@ for lead in range(lead0, lead1):
     gefs = ()
     
     for y in year_hist:
-        with h5py.File(REFCST_dir+'En_mean_APCP_{}.hdf'.format(y), 'r') as h5io:
-            gefs_ = h5io['bc_mean'][:, lead, ...][..., ~land_mask_bc]
-        gefs += (gefs_,)
+        with h5py.File(REFCST_dir+'En_members_APCP_{}.hdf'.format(y), 'r') as h5io:
+            gefs_ = h5io['bc_mean'][:, lead, 0, ...][..., ~land_mask_bc]
+        gefs += (gefs_,) # could also use ensemble mean
         
     GEFS = np.concatenate(gefs, axis=0)
     
