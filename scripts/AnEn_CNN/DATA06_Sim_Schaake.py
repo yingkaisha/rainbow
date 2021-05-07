@@ -212,8 +212,8 @@ elif type_ind == 1:
 year_analog = np.arange(2000, 2015)
 
 # ---------- Parameters ---------- #
-# number of AnEn members: 75
-EN = 75
+# number of AnEn members: 25
+EN = 25
 # number of lead times: 54 (the end of day-6)
 N_fcst = 54
 
