@@ -91,6 +91,9 @@ BCH_obs = np.concatenate(OBS, axis=-1)
 # ! <--- data cleaning 
 BCH_obs[BCH_obs>300] = np.nan
 
+for i in range(len(stn_code)):
+    BCH_obs[:, i] = bu.clean_no_response(BCH_obs[:, i], tol_window=60*8)
+
 tuple_save = (ERA5_obs, BCH_obs, flag_pick)
 label_save = ['ERA5_obs', 'BCH_obs', 'stn_flag']
 du.save_hdf5(tuple_save, label_save, save_dir, 'BCH_ERA5_1D_pairs.hdf')
