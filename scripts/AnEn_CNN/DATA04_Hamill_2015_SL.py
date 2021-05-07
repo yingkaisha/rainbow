@@ -180,7 +180,7 @@ def analog_search_SL(day0, day1, year_analog, fcst_apcp, fcst_pwat, APCP, PWAT, 
                             apcp_old = APCP[year_ind][day_real, ind_real]
                             pwat_old = PWAT[year_ind][day_real, ind_real]
                             # analog criteria of 0.7*APCP + 0.3*PWAT
-                            record_temp = 0.7*np.abs(apcp_old - apcp_new) + 0.3*np.abs(pwat_old - pwat_new)
+                            record_temp = 0.76*np.abs(apcp_old - apcp_new) + 0.24*np.abs(pwat_old - pwat_new)
                             # update the best analog of this sl
                             if record_temp < record_per_sl:
                                 record_per_sl = record_temp
