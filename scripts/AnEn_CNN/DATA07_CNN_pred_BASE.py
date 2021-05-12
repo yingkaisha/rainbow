@@ -72,9 +72,9 @@ model.compile(loss=[keras.losses.mean_absolute_error,
                     keras.losses.mean_absolute_error,
                     keras.losses.mean_absolute_error,], 
               loss_weights=[0.1, 0.1, 1.0],
-              optimizer=keras.optimizers.SGD(lr=0.0))
+              optimizer=keras.optimizers.SGD(lr=5e-6))
 
-model_path = temp_dir + 'AnEn_UNET3_base'
+model_path = temp_dir + 'AnEn_UNET3M_RAW_tune.hdf'
 W = mu.dummy_loader(model_path)
 
 model.set_weights(W)
