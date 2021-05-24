@@ -19,12 +19,12 @@ import analog_utils as ana
 
 from namelist import * 
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def shift_one(arr):
     arr[1:] = arr[:-1]
     return arr
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def search_nearby_days(day, window=30, leap_year=False):
     '''
     Assuming "day" starts at zero
@@ -51,7 +51,7 @@ def search_nearby_days(day, window=30, leap_year=False):
         ind_date[:ind_diff] = True
     return ind_date
 
-@nb.njit(fastmath=True)
+@nb.njit()
 def analog_search(day0, day1, year_analog, fcst_apcp, fcst_pwat, APCP, PWAT, ERA5, IND_bc):
     
     # params that can be adjusted
