@@ -1,0 +1,4 @@
+tensorflow_gpu==2.5.0
+numpy==1.19.5
+tensorflow==2.5.0
+keras-unet-collection==0.1.6
