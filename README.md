@@ -6,6 +6,7 @@ The official repository of my (in progress) Ph.D. dissertation.
 
 ## Data
 
+* BC Hydro rain gauge observations
 * Global Ensemble Forecast System (GEFS) reforecast
 * European Centre for Medium-Range Weather Forecasts Reanalysis version 5 (ERA5)
 * Parameter-Elevation Regressions on Independent Slopes Model (PRISM)
